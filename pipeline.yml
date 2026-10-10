@@ -1,0 +1,40 @@
+
+version: "1.0"
+name: "Final_Project"
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+stages:
+  - name: build
+    depends_on: []
+    commands:
+      - python3 -m pip install -r requirements.txt
+
+  - name: lint
+    depends_on: [build]
+    commands:
+      - python3 -m flake8 src/
+
+  - name: test-and-coverage
+    depends_on: [build]
+    commands:
+      # This runs tests AND generates the coverage report to console
+      - python3 -m pytest --cov=src tests/ -v
+
+  - name: package
+    depends_on: [lint, test-and-coverage]
+    commands:
+      - python3 setup.py sdist bdist_wheel
+
+  - name: docker
+    depends_on: [package]
+    commands:
+      # Builds the image and tags it dynamically with the Git Commit SHA
+      - docker build -t my-app:$(git rev-parse HEAD) .
+
+  - name: deploy
+    depends_on: [docker]
+    allow_failure: false
+    commands:
+      - ./scripts/deploy.sh
